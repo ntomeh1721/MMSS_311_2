@@ -1,0 +1,222 @@
+---
+title: "HW1"
+author: "Natalie Tomeh"
+date: "4/20/2019"
+output: pdf_document
+---
+```{r}
+
+library(dplyr)
+library(ggplot2)
+
+```
+
+
+Regression  
+```{r}
+sick_data <- read.csv("sick_data.csv")
+```
+
+OLS 
+
+a. 
+```{r}
+sick_data$value <- ifelse(sick_data$result == "Negative", 0, 1)
+OLS <- lm(sick_data$value ~ sick_data$temp + sick_data$bp)
+print(OLS)
+```
+
+b. 
+```{r}
+sick_data$yhat <- fitted(OLS)
+sick_data$pred <- ifelse(sick_data$yhat >= 0.5, "Positive", "Negative")
+sick_data$accuracy <- ifelse(sick_data$pred == sick_data$result, 1, 0)
+accuracy <- mean(sick_data$accuracy)
+print(accuracy)
+```
+The model is correct 96.4% of the time. 
+
+c. 
+0.5 = -5.213456 + 0.062819temp - 0.008287bp 
+5.713456 = 0.062819temp - 0.008287bp
+0.008287bp = 0.062819temp - 5.713456
+bp = 7.580427temp - 689.4481
+
+d. 
+```{r}
+ggplot(data = sick_data, aes(x = temp, y = bp, color = sick_data$result)) +
+       geom_point() +
+       geom_abline(intercept = -689.1506, slope=7.580824232)
+```
+
+
+Logit 
+
+```{r}
+install.packages("broom")
+library(broom)
+```
+
+a. 
+```{r}
+logit <- glm(sick_data$value ~ sick_data$temp + sick_data$bp, family = binomial)
+tidy(logit)
+print(logit)
+```
+
+b. 
+
+```{r}
+sick_data$yhatL <- fitted(logit_regression)
+sick_data$predL <- ifelse(sick_data$yhatL >= 0.5, "Positive", "Negative")
+sick_data$accuracyL <- ifelse(sick_data$predL == sick_data$result, 1, 0)
+accuracyL <- mean(sick_data$accuracyL)
+print(accuracyL)
+```
+The regression predicts the results with 99.2% accuracy. 
+
+c. 
+
+0.5 = -199.3266800 + 2.3139723temp -0.3499531bp 
+199.8267 = 2.3139723temp - 0.3499531bp
+0.3499531bp = 2.3139723temp - 199.8267
+bp = 6.612235temp - 571.0099
+
+
+d. 
+```{r}
+ggplot(data = sick_data, aes(x = temp, y = bp, color = sick_data$result)) +
+       geom_point() +
+       geom_abline(intercept = -571.0099, slope=6.612235)
+```
+
+
+
+
+Regularization/Selection 
+
+a. 
+```{r}
+library(readr)
+widget_data <- read.csv("widget_data.csv")
+
+plot(widget_data$y)
+```
+
+b. 
+```{r}
+install.packages("glmnet") 
+library(glmnet)
+
+ridge <- glmnet(x = as.matrix(widget_data[, -1]), y = widget_data$y, alpha = 0, lambda = 0.01:100)
+
+print(ridge)
+
+```
+
+
+c. 
+
+```{r}
+tidy(ridge)
+
+```
+```{r}
+ridge.df <- as.data.frame(tidy(ridge))
+ggplot(data = ridge.df, aes(x = ridge.df$lambda, y = ridge.df$estimate)) + 
+  geom_line()
+
+```
+
+
+d. 
+```{r}
+widget_data_cv_ridge <- cv.glmnet(as.matrix(widget_data[, -1]), widget_data$y, alpha = 0)$lambda.min 
+
+print(widget_data_cv_ridge)
+
+```
+
+e. 
+```{r}
+lasso <- glmnet(x = as.matrix(widget_data[, -1]), y = widget_data$y, alpha = 1, lambda = 0.01:100)
+
+tidy(lasso)
+print(lasso)
+
+lasso.df <- as.data.frame(tidy(lasso))
+ggplot(data = lasso.df, aes(x = lasso.df$lambda, y = lasso.df$estimate)) + 
+  geom_line()
+
+widget_data_cv_lasso <- cv.glmnet(as.matrix(widget_data[, -1]), widget_data$y, alpha = 1)$lambda.min 
+
+print(widget_data_cv_lasso)
+```
+
+
+f. The ridge coefficient estimate oscilates depending on the value of lambda, whereas the lasso estimate is consistent after a lambda value of 2.01. The lambda that minimizes mean square error is 0.2092358 for lasso and 0.4107384 for ridge. 
+
+
+Classification 
+
+```{r}
+install.packages("e1071")
+install.packages("caret")
+library(e1071)
+library(caret)
+```
+
+```{r}
+library(readr)
+pol_data <- read.csv("~/Documents/GitHub/MMSS_311_2/pol_data2.csv")
+
+```
+
+
+a. 
+```{r}
+set.seed(1)
+split <- 2/3
+train_index <- createDataPartition(pol_data$group, p = split, list = FALSE)
+train <- pol_data[train_index, ] 
+test <- pol_data[-train_index, ]
+```
+
+b. 
+
+Naive Bayes 
+```{r}
+NB <- naiveBayes(group ~ pol_margin + col_degree + house_income, data = pol_data, laplace = 0)
+
+print(NB)
+```
+
+Support Vector Classification 
+```{r}
+SV <- svm(train$group ~ . , data = train)
+
+print(SV)
+```
+
+
+c. 
+
+Naive Bayes 
+```{r}
+predNB <- predict(NB, test)
+```
+
+Support Vector Classification 
+```{r}
+predSV <- predict(SV, test)
+
+```
+
+d. 
+
+```{r}
+table(test$group, predSV)
+table(test$group, predNB)
+```
+
+
